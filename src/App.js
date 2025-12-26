@@ -21,7 +21,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 
-const apiKey = "AIzaSyB5sb_B_4ojK_kIT5pk7hdMbJpj6kATElc"; 
+const apiKey = ""; 
 
 export default function App() {
   const [view, setView] = useState('home'); // home | write | history
@@ -143,7 +143,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
       <nav className="bg-slate-900 text-white p-4 sticky top-0 z-20 shadow-md">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -161,7 +161,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="max-w-md mx-auto p-4 pb-20">
+      <main className="max-w-md mx-auto p-4 pb-10 flex-grow w-full">
         
         {/* VIEW: HOME */}
         {view === 'home' && (
@@ -397,6 +397,11 @@ export default function App() {
         )}
 
       </main>
+
+      {/* Footer */}
+      <footer className="py-4 text-center text-slate-400 text-[10px]">
+        <p>Created by aaji.s</p>
+      </footer>
     </div>
   );
 }
