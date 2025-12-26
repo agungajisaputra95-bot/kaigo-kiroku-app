@@ -28,7 +28,8 @@ import {
   ChevronDown,
   PlusCircle,
   Cpu,
-  UserCheck
+  UserCheck,
+  Zap
 } from 'lucide-react';
 
 const apiKey = ""; 
@@ -65,6 +66,23 @@ export default function App() {
     }
   };
 
+  const fillSampleCase = () => {
+    setReportType('auto');
+    setFormData({
+      staffName: "アジ (Contoh)",
+      date: new Date().toISOString().split('T')[0],
+      time: "14:20",
+      location: "居室 (Kamar tidur)",
+      userName: "田中様",
+      category: "転倒 (Tentou)",
+      rootCause: "利用者本人 (Lansia)",
+      storyIndo: "Tadi jam 2 siang lewat sedikit, Tanaka-san mencoba bangun dari tempat tidur sendiri tanpa panggil staf. Saat mau berdiri, kakinya lemas dan terduduk di lantai samping tempat tidur.",
+      immediateAction: "Langsung menolong Tanaka-san kembali ke kasur. Cek tensi dan kesadaran, semua normal. Tidak ada luka luar. Melapor ke leader."
+    });
+    if (view !== 'write') setView('write');
+    setJpOutput("");
+  };
+
   const generateReport = async () => {
     if (!formData.storyIndo || !formData.userName || !formData.staffName) {
       alert("すべての必須項目を入力してください。 Mohon lengkapi Pelapor, Nama User, dan Kronologi.");
@@ -74,14 +92,16 @@ export default function App() {
     setIsLoading(true);
     setJpOutput("");
 
+    // Updated system prompt to use Futsuu-kei (Plain form / Da-tai)
     const systemPrompt = `Anda adalah ahli administrasi perawat (Kaigo) di Jepang. 
     Tugas: Buat laporan formal yang sangat presisi dengan format 10 poin berikut.
     
-    ATURAN FORMAT (TEKS MURNI):
-    1. Gunakan Bahasa Jepang Bisnis (Keigo).
-    2. JANGAN gunakan tanda bintang (*), pagar (#), atau Markdown.
-    3. Gunakan istilah teknis: tentou, goyen, dousa, gaishou, dsb.
-    4. Pastikan setiap label menggunakan titik dua Jepang "：" setelahnya.
+    ATURAN BAHASA JEPANG (PENTING):
+    1. Gunakan Bahasa Jepang bentuk FUTSUU-KEI (Plain Form / Da-tai).
+    2. JANGAN gunakan Desu/Masu. Gunakan akhiran seperti "...だ", "...である", atau bentuk kamus.
+    3. Nada harus objektif, ringkas, dan profesional sesuai standar penulisan medis Jepang.
+    4. JANGAN gunakan tanda bintang (*), pagar (#), atau Markdown.
+    5. Gunakan istilah teknis: tentou, goyen, dousa, gaishou, dsb.
 
     STRUKTUR OUTPUT WAJIB:
     報告者： (Isi Nama Pelapor)
@@ -89,11 +109,11 @@ export default function App() {
     発生場所： (Isi Lokasi)
     対象者： (Isi Nama User 様)
     発生分類： (Isi Kategori Kejadian)
-    発生内容： (Kronologi Terjemahan)
-    対応内容： (Tindakan Terjemahan)
+    発生内容： (Kronologi Terjemahan dalam Futsuu-kei)
+    対応内容： (Tindakan Terjemahan dalam Futsuu-kei)
     原因分類： (Kategori Penyebab)
-    原因内容： (Analisa Penyebab)
-    予防対策： (Langkah Pencegahan)
+    原因内容： (Analisa Penyebab dalam Futsuu-kei)
+    予防対策： (Langkah Pencegahan dalam Futsuu-kei)
 
     LOGIKA PENENTUAN JUDUL:
     - Judul paling atas harus berisi: 【事故報告書】 atau 【ヒヤリハット報告書】
@@ -146,21 +166,25 @@ export default function App() {
     }
   };
 
-  // Helper untuk merender teks dengan label tebal
   const renderFormattedResult = (text) => {
     return text.split('\n').map((line, index) => {
-      // Mencari pola "Label："
       if (line.includes('：')) {
         const [label, content] = line.split('：');
         return (
-          <div key={index} className="mb-2">
-            <span className="font-black text-indigo-400 mr-1">{label}：</span>
-            <span className="text-slate-100 font-medium">{content}</span>
+          <div key={index} className="mb-2 text-left">
+            <span className="font-semibold text-indigo-400/90 mr-1">{label}：</span>
+            <span className="text-slate-200">{content}</span>
           </div>
         );
       }
-      // Untuk baris judul atau teks biasa
-      return <div key={index} className="mb-2 font-black text-white text-center text-lg tracking-widest">{line}</div>;
+      if (line.trim().startsWith('【') || line.includes('報告書')) {
+        return (
+          <div key={index} className="mb-4 mt-2 font-bold text-white text-left text-lg border-b border-slate-800 pb-2 tracking-wide">
+            {line}
+          </div>
+        );
+      }
+      return <div key={index} className="mb-2 text-left text-slate-300">{line}</div>;
     });
   };
 
@@ -184,7 +208,6 @@ export default function App() {
   return (
     <div className="dark min-h-screen bg-[#020617] font-sans text-slate-100 flex flex-col">
       
-      {/* Navbar */}
       <nav className="bg-[#0f172a] text-white p-4 sticky top-0 z-30 border-b border-slate-800 shadow-2xl">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div onClick={() => setView('home')} className="cursor-pointer flex items-center gap-3 active:scale-95 transition-all">
@@ -214,7 +237,7 @@ export default function App() {
               </div>
               <h2 className="text-3xl font-black text-white tracking-tighter mb-3">レポート作成</h2>
               <p className="text-slate-400 text-sm font-medium leading-relaxed mb-10 px-4">
-                Tulis kronologi dalam Bahasa Indonesia, AI akan menyusun laporan secara rapi dan profesional.
+                Tulis kronologi dalam Bahasa Indonesia, AI akan menyusun laporan Futsuu-kei secara profesional.
               </p>
               <button onClick={() => {setView('write'); setJpOutput("");}} className="w-full py-5 bg-indigo-600 hover:bg-indigo-50 hover:text-indigo-900 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
                 <PlusCircle size={22} /> 新規作成 (Buat Laporan)
@@ -327,12 +350,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* HASIL OUTPUT TERSTRUKTUR */}
             {jpOutput && (
               <div className="space-y-5 animate-in slide-in-from-bottom-6 duration-700 pb-12">
                 <div className="flex items-center justify-between px-2">
                   <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <ClipboardCheck size={16} /> 10項目報告書 (Format Kontras)
+                    <ClipboardCheck size={16} /> 10項目報告書 (Clean View)
                   </h3>
                   <button onClick={() => copyToClipboard(jpOutput)} className="bg-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-700 flex items-center gap-2 transition-all hover:bg-slate-700 active:scale-90">
                     {isCopied ? <Check size={16} className="text-green-400" /> : <Copy size={16} className="text-slate-400" />}
@@ -340,18 +362,11 @@ export default function App() {
                   </button>
                 </div>
                 
-                <div className="bg-[#0f172a] p-8 md:p-10 rounded-[3rem] border-2 border-slate-800 shadow-2xl relative overflow-hidden transition-all">
+                <div className="bg-[#0f172a] p-8 md:p-10 rounded-[3rem] border-2 border-slate-800 shadow-2xl relative overflow-hidden transition-all text-left">
                   <div className="absolute top-0 right-0 p-10 opacity-[0.05] pointer-events-none text-white"><FileText size={180} /></div>
                   
-                  {/* Container Hasil Terjemahan dengan Pembedaan Font */}
                   <div className="relative z-10 antialiased leading-relaxed text-sm md:text-base">
                     {renderFormattedResult(jpOutput)}
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-slate-800">
-                    <p className="text-[10px] text-slate-500 italic">
-                      *Label dicetak tebal untuk memudahkan pemetaan data ke formulir kertas.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -366,7 +381,7 @@ export default function App() {
                 <h2 className="text-xl font-black text-white uppercase tracking-tight">レポート履歴</h2>
                 <span className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full">{history.length}</span>
              </div>
-             <div className="space-y-4">
+             <div className="space-y-4 text-left">
                {history.length === 0 ? (
                  <div className="text-center py-24 bg-[#0f172a] rounded-[3rem] border-4 border-dashed border-slate-800">
                    <History className="mx-auto text-slate-700 mb-4" size={64} />
@@ -374,7 +389,7 @@ export default function App() {
                  </div>
                ) : (
                  history.map((item) => (
-                   <div key={item.id} className="bg-[#0f172a] rounded-[2.5rem] border border-slate-800 shadow-xl p-6 space-y-4 text-left">
+                   <div key={item.id} className="bg-[#0f172a] rounded-[2.5rem] border border-slate-800 shadow-xl p-6 space-y-4">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-4">
                            <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${item.type === 'jiko' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
@@ -388,9 +403,7 @@ export default function App() {
                         </div>
                         <button onClick={() => deleteHistoryItem(item.id)} className="text-slate-600 hover:text-red-500 p-2.5 transition-colors"><Trash2 size={20}/></button>
                       </div>
-                      <div className="bg-slate-800/50 p-5 rounded-3xl text-[11px] text-slate-400 font-mono line-clamp-3 italic border border-slate-800">
-                        {item.result}
-                      </div>
+                      <div className="bg-slate-800/50 p-5 rounded-3xl text-[11px] text-slate-400 font-mono line-clamp-3 italic border border-slate-800">{item.result}</div>
                       <button onClick={() => copyToClipboard(item.result)} className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 transition-all">コピーする (Salin)</button>
                    </div>
                  ))
@@ -408,7 +421,7 @@ export default function App() {
                   <div className="bg-indigo-500/10 p-5 rounded-3xl ring-1 ring-indigo-500/20"><Lock size={32} /></div>
                   <div className="text-left"><h2 className="font-black text-2xl uppercase tracking-tighter">Privacy Policy</h2><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">プライバシーポリシー / Kebijakan Privasi</p></div>
                 </div>
-                <div className="space-y-8 text-xs text-slate-400 leading-[2] font-medium">
+                <div className="space-y-8 text-xs text-slate-400 space-y-5 leading-[2] font-medium">
                   <div><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3">日本語</p><ul><li>入力情報はAIによって即座に処理されます。</li><li>氏名欄にはイニシャル等の使用を推奨します。</li></ul></div>
                   <div className="pt-6 border-t border-slate-800"><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3">Bahasa Indonesia</p><ul><li>Data diproses secara langsung oleh AI.</li><li>Gunakan inisial nama lansia demi privasi.</li></ul></div>
                 </div>
@@ -417,6 +430,14 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <button 
+        onClick={fillSampleCase}
+        className="fixed bottom-6 right-6 bg-amber-500 hover:bg-amber-400 text-[#020617] p-4 rounded-full shadow-2xl shadow-amber-500/30 active:scale-90 transition-all z-50 flex items-center gap-2 group overflow-hidden max-w-[56px] hover:max-w-[200px]"
+      >
+        <Zap size={24} className="shrink-0" />
+        <span className="font-black text-xs uppercase tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Contoh Kasus</span>
+      </button>
 
       <footer className="py-12 text-center space-y-6">
         <button onClick={() => setView('legal')} className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all">Policy & Disclaimer</button>
