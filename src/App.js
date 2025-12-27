@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 
 // API Key kosong, lingkungan eksekusi akan mengisi secara otomatis
-const apiKey = "";
+const process.env.REACT_APP_GEMINI_API_KEY || "";
 
 export default function App() {
   const [view, setView] = useState('home'); 
