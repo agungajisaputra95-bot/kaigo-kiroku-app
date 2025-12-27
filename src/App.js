@@ -39,8 +39,26 @@ import {
   Scale
 } from 'lucide-react';
 
-// API Key kosong, lingkungan eksekusi akan mengisi secara otomatis
-const process.env.REACT_APP_GEMINI_API_KEY || "";
+// Fungsi untuk mendeteksi API Key secara aman dari berbagai environment (CRA atau Vite)
+const getApiKey = () => {
+  // Cek untuk Create React App (process.env)
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY) {
+      return process.env.REACT_APP_GEMINI_API_KEY;
+    }
+  } catch (e) {}
+
+  // Cek untuk Vite (import.meta.env) secara dinamis agar tidak error di target ES2015
+  try {
+    // @ts-ignore
+    const viteKey = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_GEMINI_API_KEY : "";
+    if (viteKey) return viteKey;
+  } catch (e) {}
+
+  return "";
+};
+
+const apiKey = getApiKey();
 
 export default function App() {
   const [view, setView] = useState('home'); 
@@ -100,7 +118,7 @@ export default function App() {
     }
   };
 
-  // Daftar Contoh Kasus (Nama Pelapor: Joko)
+  // Daftar Contoh Kasus
   const sampleCases = [
     {
       type: 'hiyari',
@@ -148,6 +166,11 @@ export default function App() {
   const generateReport = async () => {
     if (!formData.storyIndo || !formData.userName || !formData.staffName) {
       triggerToast("Mohon lengkapi semua data wajib.");
+      return;
+    }
+
+    if (!apiKey) {
+      setJpOutput("API Key tidak ditemukan. Pastikan Anda telah mengaturnya di Dashboard Vercel.");
       return;
     }
 
@@ -516,7 +539,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW: LEGAL (DISCLAIMER & POLICY) */}
+        {/* VIEW: LEGAL */}
         {view === 'legal' && (
           <div className="space-y-6 animate-in slide-in-from-bottom duration-500 pb-12 text-left">
             <button onClick={() => setView('home')} className="bg-slate-800 p-2.5 rounded-2xl text-slate-400 border border-slate-700 shadow-lg text-left transition-all active:scale-95">
@@ -535,9 +558,9 @@ export default function App() {
                   </div>
                 </div>
                 <div className="space-y-4 text-xs text-slate-400 leading-relaxed font-medium">
-                  <p>1. Laporan ini disusun secara otomatis oleh sistem. Hasil terjemahan dan susunan kalimat mungkin tidak 100% akurat.</p>
-                  <p>2. Pengguna **WAJIB** meninjau kembali setiap poin laporan sebelum diserahkan secara resmi ke pihak manajemen panti atau institusi terkait.</p>
-                  <p>3. Kami tidak bertanggung jawab atas kesalahan tindakan medis atau hukum yang timbul akibat penggunaan langsung hasil laporan tanpa verifikasi profesional.</p>
+                  <p>1. Laporan ini disusun secara otomatis oleh sistem. Hasil terjemahan mungkin tidak 100% akurat.</p>
+                  <p>2. Pengguna **WAJIB** meninjau kembali laporan sebelum diserahkan secara resmi.</p>
+                  <p>3. Kami tidak bertanggung jawab atas kesalahan tindakan yang timbul akibat penggunaan laporan ini tanpa verifikasi profesional.</p>
                 </div>
               </section>
 
@@ -552,9 +575,9 @@ export default function App() {
                   </div>
                 </div>
                 <div className="space-y-4 text-xs text-slate-400 leading-relaxed font-medium">
-                  <p>1. **Data Pasien**: Sangat dilarang memasukkan nama lengkap lansia. Disarankan menggunakan inisial (contoh: T-sama) demi menjaga privasi dan mematuhi regulasi di Jepang.</p>
-                  <p>2. **Penyimpanan**: Seluruh riwayat laporan disimpan secara lokal di browser perangkat Anda melalui *LocalStorage*. Kami tidak menyimpan data laporan Anda di server kami.</p>
-                  <p>3. **Pemrosesan Sistem**: Teks input dikirim ke server untuk pemrosesan sementara dan tidak digunakan untuk pelatihan data pihak ketiga oleh pengembang aplikasi ini.</p>
+                  <p>1. **Data Pasien**: Gunakan inisial demi menjaga privasi dan regulasi di Jepang.</p>
+                  <p>2. **Penyimpanan**: Riwayat disimpan lokal di browser melalui *LocalStorage*.</p>
+                  <p>3. **Pemrosesan**: Input dikirim ke server AI untuk pemrosesan sementara saja.</p>
                 </div>
               </section>
             </div>
@@ -562,7 +585,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Contoh Kasus */}
+      {/* Floating Action Button (FAB) */}
       <button 
         onClick={fillSampleCase}
         className="fixed bottom-6 right-6 bg-amber-500 hover:bg-amber-400 text-[#020617] p-5 rounded-[1.8rem] shadow-2xl active:scale-90 transition-all z-50 flex items-center gap-3 group overflow-hidden max-w-[64px] hover:max-w-[220px] ring-4 ring-amber-500/20"
