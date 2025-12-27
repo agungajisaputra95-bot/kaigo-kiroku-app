@@ -37,6 +37,7 @@ import {
   Eye
 } from 'lucide-react';
 
+// PASTIKAN: Jika anda menjalankan di luar lingkungan ini, isi apiKey dengan kunci Gemini API anda.
 const apiKey = ""; 
 
 export default function App() {
@@ -50,9 +51,14 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState("");
   const [expandedId, setExpandedId] = useState(null); 
   
+  // Fitur Riwayat dengan Local Storage
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem('kaigo_history');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('kaigo_history_v3');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [formData, setFormData] = useState({
@@ -66,8 +72,9 @@ export default function App() {
     immediateAction: "" 
   });
 
+  // Simpan riwayat setiap kali ada perubahan
   useEffect(() => {
-    localStorage.setItem('kaigo_history', JSON.stringify(history));
+    localStorage.setItem('kaigo_history_v3', JSON.stringify(history));
   }, [history]);
 
   const triggerToast = (msg) => {
@@ -79,7 +86,10 @@ export default function App() {
   const fetchWithRetry = async (url, options, retries = 5, backoff = 1000) => {
     try {
       const response = await fetch(url, options);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      }
       return await response.json();
     } catch (error) {
       if (retries <= 0) throw error;
@@ -106,7 +116,7 @@ export default function App() {
       userName: "佐藤様",
       category: "誤嚥 (Goyen)",
       storyIndo: "Saat makan siang, Sato-san tiba-tiba tersedak saat makan agar-agar (jelly). Wajahnya memerah dan kesulitan bernapas selama beberapa detik.",
-      immediateAction: "Melakukan tepukan punggung (back slap) sampai makanan keluar. Sato-san batuk dan napas kembali normal. Memberi air minum perlahan dan observasi SPO2."
+      immediateAction: "Melakukan tepukan punggung (back slap) sampai makanan keluar. Sato-san batuk dan napas kembali normal. Memberi air minum perlahan."
     },
     {
       type: 'hiyari',
@@ -114,22 +124,12 @@ export default function App() {
       location: "廊下 (Lorong)",
       userName: "鈴木様",
       category: "誤薬 (Goyaku)",
-      storyIndo: "Hampir memberikan obat milik Suzuki-san ke warga lain karena nama di nampan obat tertukar. Untungnya saya cek kembali gelang identitas sebelum obat diminum.",
-      immediateAction: "Menarik kembali obat tersebut dan mencari nampan yang benar. Melakukan double check dengan staf lain sebelum memberikan obat yang tepat."
-    },
-    {
-      type: 'hiyari',
-      staffName: "アジ (Contoh)",
-      location: "トイレ (Toilet)",
-      userName: "高橋様",
-      category: "転落 (Tenraku)",
-      storyIndo: "Takahashi-san hampir terjatuh dari kursi roda saat mau pindah ke toilet karena rem kursi roda belum terkunci sempurna. Saya buru-buru menahan badan beliau.",
-      immediateAction: "Mengunci rem kursi roda dengan benar. Membantu Takahashi-san duduk kembali dengan stabil. Mengingatkan beliau agar menunggu staf mengunci rem."
+      storyIndo: "Hampir memberikan obat milik Suzuki-san ke warga lain karena nama di nampan obat tertukar. Untungnya saya cek kembali sebelum diminum.",
+      immediateAction: "Menarik kembali obat tersebut dan mencari nampan yang benar. Melakukan double check dengan staf lain."
     }
   ];
 
   const fillSampleCase = () => {
-    // Pilih kasus secara acak
     const randomIndex = Math.floor(Math.random() * sampleCases.length);
     const selected = sampleCases[randomIndex];
 
@@ -149,7 +149,7 @@ export default function App() {
     if (view !== 'write') setView('write');
     setJpOutput("");
     setIsSaved(false);
-    triggerToast("Kasus acak terisi!");
+    triggerToast("Kasus contoh berhasil dimuat.");
   };
 
   const generateReport = async () => {
@@ -185,15 +185,15 @@ export default function App() {
     【Judul Laporan】
     [ID] (Terjemahan Judul)
 
-    報告者：[Isi] / [ID] [Isi]
-    発生日時：[Isi] / [ID] [Isi]
-    発生場所：[Isi] / [ID] [Isi]
-    対象者：[Isi] / [ID] [Isi]
-    発生分類：[Isi] / [ID] [Isi]
-    発生内容：[Isi] / [ID] [Isi]
-    対応内容：[Isi] / [ID] [Isi]
-    原因分類：[Isi] / [ID] [Isi]
-    原因内容：[Isi] / [ID] [Isi]
+    報告者：[Nama Jepang] / [ID] [Nama Indonesia]
+    発生日時：[Waktu Jepang] / [ID] [Waktu Indonesia]
+    発生場所：[Lokasi Jepang] / [ID] [Lokasi Indonesia]
+    対象者：[Nama User 様] / [ID] [Nama User]
+    発生分類：[Kategori Jepang] / [ID] [Kategori Indonesia]
+    発生内容：[Isi Jepang] / [ID] [Isi Indonesia]
+    対応内容：[Isi Jepang] / [ID] [Isi Indonesia]
+    原因分類：[Pilih 1 dari kategori di atas] / [ID] [Terjemahan Kategori]
+    原因内容：[Analisa Penyebab Jepang] / [ID] [Analisa Indo]
     予防対策：
     ① [Langkah 1 Jepang]
     [ID] [Langkah 1 Indonesia]
@@ -228,7 +228,7 @@ export default function App() {
       setJpOutput(cleanResult);
 
     } catch (error) {
-      setJpOutput("接続に失敗しました。 Gagal menghubungkan ke sistem.");
+      setJpOutput(`接続に失敗しました。 Gagal menghubungkan ke sistem.\nDetail: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +249,7 @@ export default function App() {
 
     setHistory([newRecord, ...history]);
     setIsSaved(true);
-    triggerToast("Laporan disimpan!");
+    triggerToast("Laporan disimpan ke riwayat.");
   };
 
   const renderFormattedResult = (text) => {
@@ -257,6 +257,7 @@ export default function App() {
       const trimmedLine = line.trim();
       if (!trimmedLine) return <div key={index} className="h-2" />;
 
+      // 1. Baris Terjemahan Indonesia
       if (trimmedLine.startsWith('[ID]')) {
         return (
           <div key={index} className="mb-3 text-left text-slate-500 text-[11px] italic leading-relaxed pl-1">
@@ -265,14 +266,16 @@ export default function App() {
         );
       }
 
+      // 2. Baris Judul
       if (trimmedLine.startsWith('【') && trimmedLine.endsWith('】')) {
         return (
-          <div key={index} className="mt-4 mb-2 font-bold text-white text-left text-lg tracking-wide border-b border-slate-800 pb-2 uppercase">
+          <div key={index} className="mt-4 mb-2 font-bold text-white text-left text-lg tracking-wide border-b border-slate-800 pb-2">
             {trimmedLine}
           </div>
         );
       }
 
+      // 3. Baris Label : Konten
       if (trimmedLine.includes('：')) {
         const [label, ...rest] = trimmedLine.split('：');
         const content = rest.join('：'); 
@@ -284,6 +287,7 @@ export default function App() {
         );
       }
 
+      // 4. Baris Opsi (①, ②, ③)
       if (trimmedLine.startsWith('①') || trimmedLine.startsWith('②') || trimmedLine.startsWith('③')) {
         return (
           <div key={index} className="text-left text-slate-200 text-sm font-medium mt-1">
@@ -304,7 +308,7 @@ export default function App() {
     document.execCommand('copy');
     document.body.removeChild(textArea);
     setIsCopied(true);
-    triggerToast("Berhasil disalin!");
+    triggerToast("Berhasil disalin ke clipboard.");
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -315,7 +319,7 @@ export default function App() {
 
   const clearAllHistory = () => {
     setHistory([]);
-    triggerToast("Riwayat dibersihkan.");
+    triggerToast("Seluruh riwayat dibersihkan.");
   };
 
   const toggleExpand = (id) => {
@@ -325,13 +329,15 @@ export default function App() {
   return (
     <div className="dark min-h-screen bg-[#020617] font-sans text-slate-100 flex flex-col selection:bg-indigo-500/30 overflow-x-hidden transition-all duration-300">
       
+      {/* Toast Notification */}
       {showToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center gap-2">
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center gap-2 border border-indigo-400/30">
           <Check size={18} />
           <span className="text-sm font-bold tracking-wide">{toastMsg}</span>
         </div>
       )}
 
+      {/* Navbar */}
       <nav className="bg-[#0f172a] text-white p-4 sticky top-0 z-30 border-b border-slate-800 shadow-2xl">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div onClick={() => setView('home')} className="cursor-pointer flex items-center gap-3 active:scale-95 transition-all">
@@ -361,6 +367,7 @@ export default function App() {
 
       <main className="max-w-md mx-auto p-5 pb-24 flex-grow w-full space-y-6 text-left">
         
+        {/* VIEW: HOME */}
         {view === 'home' && (
           <div className="space-y-10 animate-in fade-in duration-500 pt-6 text-center">
             <div className="bg-[#0f172a] p-10 rounded-[3.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
@@ -464,7 +471,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 text-left">
                     <Activity size={14}/> 状況分析 (Analisa)
                   </h3>
                   
@@ -479,12 +486,12 @@ export default function App() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-tighter block ml-1">発生状況 (Kronologi Indo)</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-tighter block ml-1 text-left">発生状況 (Kronologi Indo)</label>
                     <textarea rows="4" placeholder="Ceritakan urutan kejadiannya..." value={formData.storyIndo} onChange={(e) => setFormData({...formData, storyIndo: e.target.value})} className="w-full p-5 bg-slate-800 text-white rounded-[1.5rem] text-sm border border-slate-700 focus:border-indigo-500 outline-none transition-all font-bold leading-relaxed"></textarea>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-tighter block ml-1">直後の処置 (Tindakan Indo)</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-tighter block ml-1 text-left">直後の処置 (Tindakan Indo)</label>
                     <textarea rows="3" placeholder="Apa tindakan yang diambil?" value={formData.immediateAction} onChange={(e) => setFormData({...formData, immediateAction: e.target.value})} className="w-full p-5 bg-slate-800 text-white rounded-[1.5rem] text-sm border border-slate-700 focus:border-indigo-500 outline-none transition-all font-bold leading-relaxed"></textarea>
                   </div>
                 </div>
@@ -500,7 +507,7 @@ export default function App() {
             {jpOutput && (
               <div className="space-y-5 animate-in slide-in-from-bottom-6 duration-700 pb-12">
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2 text-left">
                     <ClipboardCheck size={16} /> 10項目報告書 (Preview)
                   </h3>
                   <div className="flex gap-2">
@@ -514,7 +521,7 @@ export default function App() {
                       {isSaved ? <Check size={14} /> : <Save size={14} />}
                       {isSaved ? "保存済み" : "保存 (Simpan)"}
                     </button>
-                    <button onClick={() => copyToClipboard(jpOutput)} className="bg-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-700 flex items-center gap-2 transition-all hover:bg-slate-700 active:scale-90">
+                    <button onClick={() => copyToClipboard(jpOutput)} className="bg-slate-800 p-2.5 rounded-2xl shadow-lg border border-slate-700 flex items-center gap-2 transition-all hover:bg-slate-700 active:scale-90 text-left">
                       {isCopied ? <Check size={16} className="text-green-400" /> : <Copy size={16} className="text-slate-400" />}
                     </button>
                   </div>
@@ -533,14 +540,14 @@ export default function App() {
 
         {/* VIEW: HISTORY */}
         {view === 'history' && (
-          <div className="space-y-8 animate-in slide-in-from-right duration-300">
-             <div className="flex items-center justify-between px-1">
-                <button onClick={() => setView('home')} className="bg-slate-800 p-2.5 rounded-2xl text-slate-400 border border-slate-700 active:scale-95 transition-all"><ArrowLeft size={20} /></button>
+          <div className="space-y-8 animate-in slide-in-from-right duration-300 text-left">
+             <div className="flex items-center justify-between px-1 text-left">
+                <button onClick={() => setView('home')} className="bg-slate-800 p-2.5 rounded-2xl text-slate-400 border border-slate-700 active:scale-95 transition-all text-left"><ArrowLeft size={20} /></button>
                 <div className="text-center">
-                  <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">レポート履歴</h2>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">Daftar Arsip Anda</p>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none text-center">レポート履歴</h2>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1.5 text-center">Daftar Arsip Anda</p>
                 </div>
-                <button onClick={clearAllHistory} className="bg-red-500/10 text-red-500 p-2.5 rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-90">
+                <button onClick={clearAllHistory} className="bg-red-500/10 text-red-500 p-2.5 rounded-2xl hover:bg-red-600 hover:text-white transition-all active:scale-90 text-left">
                   <Eraser size={20} />
                 </button>
              </div>
@@ -553,29 +560,29 @@ export default function App() {
                  </div>
                ) : (
                  history.map((item) => (
-                   <div key={item.id} className="relative bg-[#0f172a] rounded-[2.5rem] border border-slate-800 shadow-xl overflow-hidden transition-all duration-300 group hover:border-slate-600">
+                   <div key={item.id} className="relative bg-[#0f172a] rounded-[2.5rem] border border-slate-800 shadow-xl overflow-hidden transition-all duration-300 group hover:border-slate-600 text-left">
                       
                       <div className={`absolute left-0 top-0 bottom-0 w-2 ${item.type === 'jiko' ? 'bg-red-600' : 'bg-amber-500'}`}></div>
 
                       <div className="p-6 md:p-8 space-y-4">
                         <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 text-left">
                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.type === 'jiko' ? 'bg-red-600/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                 {item.type === 'jiko' ? <ShieldAlert size={24} /> : <AlertTriangle size={24} />}
                              </div>
-                             <div>
-                                <span className="font-black text-white text-lg block leading-none mb-1">{item.user}</span>
+                             <div className="text-left">
+                                <span className="font-black text-white text-lg block leading-none mb-1 text-left">{item.user}</span>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1 leading-none">
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1 leading-none text-left">
                                     <CalendarDays size={10}/> {item.dateCreated}
                                   </span>
-                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md leading-none ${item.type === 'jiko' ? 'bg-red-600/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md leading-none text-left ${item.type === 'jiko' ? 'bg-red-600/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
                                     {item.type === 'jiko' ? '事故報告書' : 'ヒヤリハット'}
                                   </span>
                                 </div>
                              </div>
                           </div>
-                          <button onClick={() => deleteHistoryItem(item.id)} className="text-slate-700 hover:text-red-500 p-2 transition-colors active:scale-90">
+                          <button onClick={() => deleteHistoryItem(item.id)} className="text-slate-700 hover:text-red-500 p-2 transition-colors active:scale-90 text-left">
                             <Trash2 size={22}/>
                           </button>
                         </div>
@@ -592,16 +599,16 @@ export default function App() {
                            </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 text-left">
                           <button 
                             onClick={() => copyToClipboard(item.result)} 
-                            className="flex-1 py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-500/20 active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+                            className="flex-1 py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-500/20 active:scale-95 flex items-center justify-center gap-2 shadow-lg text-left"
                           >
                             <Copy size={16} /> コピー (Salin)
                           </button>
                           <button 
                             onClick={() => toggleExpand(item.id)}
-                            className="w-14 h-14 bg-slate-800 rounded-[1.5rem] flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700 active:scale-95 shadow-lg"
+                            className="w-14 h-14 bg-slate-800 rounded-[1.5rem] flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700 active:scale-95 shadow-lg text-left"
                           >
                             {expandedId === item.id ? <ChevronUp size={24} /> : <Eye size={24} />}
                           </button>
@@ -616,17 +623,17 @@ export default function App() {
 
         {view === 'legal' && (
           <div className="space-y-6 animate-in slide-in-from-bottom duration-300 pb-12 text-left">
-            <button onClick={() => setView('home')} className="bg-slate-800 p-2.5 rounded-2xl text-slate-400 border border-slate-700 shadow-lg"><ArrowLeft size={20} /></button>
-            <div className="space-y-6">
-              <section className="bg-[#0f172a] p-10 rounded-[3.5rem] border border-slate-800 shadow-xl relative overflow-hidden">
+            <button onClick={() => setView('home')} className="bg-slate-800 p-2.5 rounded-2xl text-slate-400 border border-slate-700 shadow-lg text-left"><ArrowLeft size={20} /></button>
+            <div className="space-y-6 text-left">
+              <section className="bg-[#0f172a] p-10 rounded-[3.5rem] border border-slate-800 shadow-xl relative overflow-hidden text-left">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl"></div>
-                <div className="flex items-center gap-4 mb-8 text-indigo-400">
+                <div className="flex items-center gap-4 mb-8 text-indigo-400 text-left">
                   <div className="bg-indigo-500/10 p-5 rounded-3xl ring-1 ring-indigo-500/20"><Lock size={32} /></div>
-                  <div className="text-left"><h2 className="font-black text-2xl uppercase tracking-tighter">Privacy Policy</h2><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Kebijakan Privasi</p></div>
+                  <div className="text-left"><h2 className="font-black text-2xl uppercase tracking-tighter text-left">Privacy Policy</h2><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1 text-left">Kebijakan Privasi</p></div>
                 </div>
-                <div className="space-y-10 text-xs text-slate-400 leading-[2] font-medium relative z-10">
-                  <div><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3">日本語</p><ul><li>入力情報はシステムによって即座に処理されます。</li><li>氏名欄にはイニシャル等の使用を推奨します。</li></ul></div>
-                  <div className="pt-6 border-t border-slate-800"><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3">Bahasa Indonesia</p><ul><li>Data diproses secara langsung oleh sistem.</li><li>Gunakan inisial nama lansia demi privasi.</li><li>Riwayat disimpan hanya di perangkat Anda.</li></ul></div>
+                <div className="space-y-10 text-xs text-slate-400 leading-[2] font-medium relative z-10 text-left">
+                  <div className="text-left"><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3 text-left">日本語</p><ul><li>入力情報はシステムによって即座に処理されます。</li><li>氏名欄にはイニシャル等の使用を推奨します。</li></ul></div>
+                  <div className="pt-6 border-t border-slate-800 text-left"><p className="font-black text-indigo-300 border-b border-slate-800 pb-2 uppercase tracking-widest mb-3 text-left text-left">Bahasa Indonesia</p><ul><li>Data diproses secara langsung oleh sistem.</li><li>Gunakan inisial nama lansia demi privasi.</li><li>Riwayat disimpan hanya di perangkat Anda.</li></ul></div>
                 </div>
               </section>
             </div>
@@ -634,7 +641,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Action Button (FAB) - Contoh Kasus Acak ✨ */}
+      {/* Floating Action Button (FAB) - Contoh Kasus */}
       <button 
         onClick={fillSampleCase}
         className="fixed bottom-6 right-6 bg-amber-500 hover:bg-amber-400 text-[#020617] p-5 rounded-[1.8rem] shadow-[0_10px_40px_rgba(245,158,11,0.3)] active:scale-90 transition-all z-50 flex items-center gap-3 group overflow-hidden max-w-[64px] hover:max-w-[220px] ring-4 ring-amber-500/20"
@@ -644,10 +651,10 @@ export default function App() {
       </button>
 
       <footer className="py-12 text-center space-y-6">
-        <button onClick={() => setView('legal')} className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all">Policy & Disclaimer</button>
+        <button onClick={() => setView('legal')} className="text-[10px] font-black text-slate-600 hover:text-indigo-400 uppercase tracking-[0.3em] transition-all text-center">Policy & Disclaimer</button>
         <div className="inline-flex items-center gap-3 px-6 py-3 bg-[#0f172a] rounded-full border border-slate-800 shadow-xl shadow-black/50 mx-auto">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Created by aaji.s</p>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none text-center">Created by aaji.s</p>
         </div>
       </footer>
     </div>
