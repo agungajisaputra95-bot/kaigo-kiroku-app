@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 
 // PASTIKAN: Jika anda menjalankan di luar lingkungan ini, isi apiKey dengan kunci Gemini API anda.
-const apiKey = "AIzaSyBi8MJfwJWYAlAXFjbRBwfaFpreYH2Q1PI"; 
+const apiKey = process.env.REACT_APP_GEMINI_API_KEY || "";
 
 export default function App() {
   const [view, setView] = useState('home'); 
