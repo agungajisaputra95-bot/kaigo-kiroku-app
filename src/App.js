@@ -9,7 +9,7 @@ import {
 
 // API Key: Biarkan kosong untuk lingkungan Preview. 
 // Untuk Vercel, Anda bisa menempelkan kunci Anda di sini: const apiKey = ""; 
-const apiKey = ""; 
+const apiKey = "AIzaSyBi8MJfwJWYAlAXFjbRBwfaFpreYH2Q1PI"; 
 
 export default function App() {
   const [view, setView] = useState('home'); 
